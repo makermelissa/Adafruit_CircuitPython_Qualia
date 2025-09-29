@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-`adafruit_qualia.displays.round40_480x480`
+`adafruit_qualia.displays.square40_480x480`
 ================================================================================
 
 4" 480x480 Square DotClock Display Class
@@ -31,6 +31,7 @@ class Square40_480x480(DotClockDisplay):
 
     def __init__(self):
         super().__init__()
+        self._touch_address = 0x48
         self._init_sequence = bytes(
             b"\xff\x05w\x01\x00\x00\x10"
             b"\xc0\x02;\x00"
