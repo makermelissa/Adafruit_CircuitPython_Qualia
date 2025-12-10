@@ -31,6 +31,54 @@ TOUCH_CST826 = Adafruit_CST8XX
 TOUCH_INIT_DELAY = 0.1  # 100ms
 
 
+class Touch:
+    """Simple passthrough touch class that allows rotation transformation"""
+
+    def __init__(self, touch_driver, display, rotation=0):
+        self._driver = touch_driver
+        self._width = display.width
+        self._height = display.height
+        self._rotation = rotation
+
+    def transform(self, x, y):
+        """Transform touch coordinates based on rotation"""
+        if self._rotation == 0:
+            return x, y
+        elif self._rotation == 90:
+            return y, self._height - x
+        elif self._rotation == 180:
+            return self._width - x, self._height - y
+        elif self._rotation == 270:
+            return self._width - y, x
+        else:
+            raise ValueError("Rotation must be 0, 90, 180, or 270")
+
+    @property
+    def rotation(self):
+        """Return the rotation"""
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, value):
+        """Set the rotation"""
+        if value not in {0, 90, 180, 270}:
+            raise ValueError("Rotation must be 0, 90, 180, or 270")
+        self._rotation = value
+
+    @property
+    def touches(self):
+        """Return the number of touches"""
+        touches = self._driver.touches
+        for touch in touches:
+            touch["x"], touch["y"] = self.transform(touch["x"], touch["y"])
+        return touches
+
+    @property
+    def touched(self):
+        """Return whether the screen is touched"""
+        return self._driver.touched
+
+
 class DotClockDisplay:
     """DotClock Display Base Class for the Adafruit Qualia ESP32-S3 Library"""
 
@@ -43,7 +91,7 @@ class DotClockDisplay:
         self._touch_driver = TOUCH_FOCALTOUCH
         self._touch_address = 0x38
         self.display = None
-        self.touch = None
+        self._touch = None
         self._i2c = None
         self._round = False
 
@@ -73,9 +121,14 @@ class DotClockDisplay:
         self._i2c = busio.I2C(board.SCL, board.SDA)
         time.sleep(TOUCH_INIT_DELAY)  # Wait for Focaltouch Chip to finish resetting
         try:
-            self.touch = self._touch_driver(self._i2c, self._touch_address)
+            self._touch = Touch(self._touch_driver(self._i2c, self._touch_address), self.display)
+
         except (RuntimeError, ValueError):
-            self.touch = None
+            self._touch = None
+
+    def _transform_touch(self, x, y):
+        """Transform touch coordinates if needed"""
+        return x, y
 
     @property
     def width(self):
@@ -102,3 +155,27 @@ class DotClockDisplay:
     def round(self):
         """Return whether the display is circular"""
         return self._round
+
+    @property
+    def rotation(self):
+        """Return the display touch rotation"""
+        display_rotation = self.display.rotation if self.display is not None else 0
+        touch_rotation = self._touch.rotation if self._touch is not None else 0
+        if display_rotation != touch_rotation:
+            raise ValueError("Display and touch rotation do not match")
+        return self._touch.rotation
+
+    @rotation.setter
+    def rotation(self, value: int):
+        """Set the display rotation"""
+        if value not in {0, 90, 180, 270}:
+            raise ValueError("Rotation must be 0, 90, 180, or 270")
+        self._touch.rotation = value
+        # Update the display rotation if already initialized
+        if self.display is not None:
+            self.display.rotation = value
+
+    @property
+    def touch(self):
+        """Return the touch driver"""
+        return self._touch
