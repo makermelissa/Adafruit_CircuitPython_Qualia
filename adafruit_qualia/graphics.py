@@ -90,7 +90,7 @@ class Graphics(GraphicsBase):
             scale=scale,
             debug=debug,
         )
-        self.display.rotation = rotation
+        self._dotclock_display.rotation = rotation
 
     def init_display(self, display_type: str, *, auto_refresh: bool = True):
         """Load the Display Class, then initialize the display and touch driver"""
@@ -134,3 +134,13 @@ class Graphics(GraphicsBase):
     def dotclockdisplay(self):
         """Return the dotclock display object"""
         return self._dotclock_display
+
+    @property
+    def rotation(self):
+        """Return the rotation"""
+        return self._dotclock_display.rotation
+
+    @rotation.setter
+    def rotation(self, value):
+        """Set the rotation"""
+        self._dotclock_display.rotation = value
